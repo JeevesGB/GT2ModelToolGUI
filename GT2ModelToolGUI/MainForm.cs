@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -9,21 +9,23 @@ namespace GT2ModelToolGUI
 {
     public partial class MainForm : Form
     {
-        private string gt2ModelToolPath = ""; // Path to the executable
+        private string gt2ModelToolPath = "GT2ModelTool.exe"; 
 
         public MainForm()
         {
             InitializeComponent();
             SetupForm();
+            LoadSettings();
         }
 
         private void SetupForm()
         {
-            this.Text = "GT2 Model Tool GUI";
-            this.Size = new System.Drawing.Size(800, 600);
+            this.Text = "GT2 Model Tool GUI v1.0";
+            this.Size = new System.Drawing.Size(850, 650);
             this.StartPosition = FormStartPosition.CenterScreen;
             this.FormBorderStyle = FormBorderStyle.FixedSingle;
             this.MaximizeBox = false;
+            this.MinimizeBox = true;
         }
 
         private void InitializeComponent()
@@ -57,31 +59,34 @@ namespace GT2ModelToolGUI
         {
             // Input File Section
             GroupBox inputGroup = new GroupBox();
-            inputGroup.Text = "GT2 Car Model Files (.cdp, .cnp, .cdo, .cno)";
+            inputGroup.Text = "Input Files (.cdo, .cno, .json)";
             inputGroup.Location = new System.Drawing.Point(10, 10);
-            inputGroup.Size = new System.Drawing.Size(750, 120);
+            inputGroup.Size = new System.Drawing.Size(800, 120);
 
             ListBox inputFilesList = new ListBox();
             inputFilesList.Name = "inputFilesList";
             inputFilesList.Location = new System.Drawing.Point(10, 25);
-            inputFilesList.Size = new System.Drawing.Size(600, 60);
+            inputFilesList.Size = new System.Drawing.Size(650, 60);
             inputFilesList.SelectionMode = SelectionMode.MultiExtended;
+            inputFilesList.AllowDrop = true;
+            inputFilesList.DragEnter += InputFilesList_DragEnter;
+            inputFilesList.DragDrop += InputFilesList_DragDrop;
 
             Button browseInputBtn = new Button();
             browseInputBtn.Text = "Add Files...";
-            browseInputBtn.Location = new System.Drawing.Point(620, 24);
+            browseInputBtn.Location = new System.Drawing.Point(670, 24);
             browseInputBtn.Size = new System.Drawing.Size(80, 25);
             browseInputBtn.Click += BrowseInputFile_Click;
 
             Button clearFilesBtn = new Button();
             clearFilesBtn.Text = "Clear All";
-            clearFilesBtn.Location = new System.Drawing.Point(620, 54);
+            clearFilesBtn.Location = new System.Drawing.Point(670, 54);
             clearFilesBtn.Size = new System.Drawing.Size(80, 25);
             clearFilesBtn.Click += ClearFiles_Click;
 
             Button removeSelectedBtn = new Button();
             removeSelectedBtn.Text = "Remove";
-            removeSelectedBtn.Location = new System.Drawing.Point(620, 84);
+            removeSelectedBtn.Location = new System.Drawing.Point(670, 84);
             removeSelectedBtn.Size = new System.Drawing.Size(80, 25);
             removeSelectedBtn.Click += RemoveSelected_Click;
 
@@ -90,72 +95,70 @@ namespace GT2ModelToolGUI
             inputGroup.Controls.Add(clearFilesBtn);
             inputGroup.Controls.Add(removeSelectedBtn);
 
-            // Output Directory Section
-            GroupBox outputGroup = new GroupBox();
-            outputGroup.Text = "Output Directory";
-            outputGroup.Location = new System.Drawing.Point(10, 140);
-            outputGroup.Size = new System.Drawing.Size(750, 80);
+            // Output Type Section
+            GroupBox outputTypeGroup = new GroupBox();
+            outputTypeGroup.Text = "Output Format";
+            outputTypeGroup.Location = new System.Drawing.Point(10, 140);
+            outputTypeGroup.Size = new System.Drawing.Size(800, 120);
 
-            TextBox outputDirText = new TextBox();
-            outputDirText.Name = "outputDirText";
-            outputDirText.Location = new System.Drawing.Point(10, 25);
-            outputDirText.Size = new System.Drawing.Size(600, 23);
-            outputDirText.ReadOnly = true;
+            RadioButton radioO2 = new RadioButton();
+            radioO2.Name = "radioO2";
+            radioO2.Text = "Gran Turismo 2 Format (.cdo/.cno) - Convert from editable files back to game format";
+            radioO2.Location = new System.Drawing.Point(15, 25);
+            radioO2.Size = new System.Drawing.Size(770, 20);
 
-            Button browseOutputBtn = new Button();
-            browseOutputBtn.Text = "Browse...";
-            browseOutputBtn.Location = new System.Drawing.Point(620, 24);
-            browseOutputBtn.Size = new System.Drawing.Size(80, 25);
-            browseOutputBtn.Click += BrowseOutputDir_Click;
+            RadioButton radioOE = new RadioButton();
+            radioOE.Name = "radioOE";
+            radioOE.Text = "Editable Files (.json, .obj, .mtl) - Convert to editable format for 3D modeling";
+            radioOE.Location = new System.Drawing.Point(15, 50);
+            radioOE.Size = new System.Drawing.Size(770, 20);
+            radioOE.Checked = true; 
 
-            outputGroup.Controls.Add(outputDirText);
-            outputGroup.Controls.Add(browseOutputBtn);
+            RadioButton radioOES = new RadioButton();
+            radioOES.Name = "radioOES";
+            radioOES.Text = "Editable Files with Split Overlapping Faces - Better Blender compatibility";
+            radioOES.Location = new System.Drawing.Point(15, 75);
+            radioOES.Size = new System.Drawing.Size(770, 20);
 
-            // Options Section
-            GroupBox optionsGroup = new GroupBox();
-            optionsGroup.Text = "Conversion Options";
-            optionsGroup.Location = new System.Drawing.Point(10, 230);
-            optionsGroup.Size = new System.Drawing.Size(750, 120);
+            outputTypeGroup.Controls.Add(radioO2);
+            outputTypeGroup.Controls.Add(radioOE);
+            outputTypeGroup.Controls.Add(radioOES);
 
-            CheckBox extractTexturesChk = new CheckBox();
-            extractTexturesChk.Name = "extractTexturesChk";
-            extractTexturesChk.Text = "Extract Textures";
-            extractTexturesChk.Location = new System.Drawing.Point(10, 25);
-            extractTexturesChk.Checked = true;
+            // Command Preview Section
+            GroupBox commandGroup = new GroupBox();
+            commandGroup.Text = "Command Preview";
+            commandGroup.Location = new System.Drawing.Point(10, 270);
+            commandGroup.Size = new System.Drawing.Size(800, 60);
 
-            CheckBox preserveStructureChk = new CheckBox();
-            preserveStructureChk.Name = "preserveStructureChk";
-            preserveStructureChk.Text = "Preserve Directory Structure";
-            preserveStructureChk.Location = new System.Drawing.Point(10, 50);
-            preserveStructureChk.Checked = true;
+            TextBox commandPreview = new TextBox();
+            commandPreview.Name = "commandPreview";
+            commandPreview.Location = new System.Drawing.Point(10, 25);
+            commandPreview.Size = new System.Drawing.Size(780, 23);
+            commandPreview.ReadOnly = true;
+            commandPreview.BackColor = System.Drawing.Color.LightGray;
+            commandPreview.Font = new System.Drawing.Font("Consolas", 9);
 
-            CheckBox verboseOutputChk = new CheckBox();
-            verboseOutputChk.Name = "verboseOutputChk";
-            verboseOutputChk.Text = "Verbose Output";
-            verboseOutputChk.Location = new System.Drawing.Point(10, 75);
-
-            optionsGroup.Controls.Add(extractTexturesChk);
-            optionsGroup.Controls.Add(preserveStructureChk);
-            optionsGroup.Controls.Add(verboseOutputChk);
+            commandGroup.Controls.Add(commandPreview);
 
             // Convert Button
             Button convertBtn = new Button();
+            convertBtn.Name = "convertBtn";
             convertBtn.Text = "Convert Selected Files";
-            convertBtn.Location = new System.Drawing.Point(320, 360);
-            convertBtn.Size = new System.Drawing.Size(140, 35);
+            convertBtn.Location = new System.Drawing.Point(325, 340);
+            convertBtn.Size = new System.Drawing.Size(150, 35);
             convertBtn.BackColor = System.Drawing.Color.LightGreen;
             convertBtn.Click += ConvertButton_Click;
 
             // Output Log
             GroupBox logGroup = new GroupBox();
             logGroup.Text = "Output Log";
-            logGroup.Location = new System.Drawing.Point(10, 405);
-            logGroup.Size = new System.Drawing.Size(750, 110);
+            logGroup.Location = new System.Drawing.Point(10, 385);
+            logGroup.Size = new System.Drawing.Size(800, 150);
 
             TextBox outputLog = new TextBox();
             outputLog.Name = "outputLog";
             outputLog.Location = new System.Drawing.Point(10, 20);
-            outputLog.Size = new System.Drawing.Size(730, 80);
+            outputLog.Size = new System.Drawing.Size(780, 120);
             outputLog.Multiline = true;
             outputLog.ScrollBars = ScrollBars.Vertical;
             outputLog.ReadOnly = true;
@@ -165,9 +168,15 @@ namespace GT2ModelToolGUI
 
             logGroup.Controls.Add(outputLog);
 
+
+            radioO2.CheckedChanged += (s, e) => UpdateCommandPreview();
+            radioOE.CheckedChanged += (s, e) => UpdateCommandPreview();
+            radioOES.CheckedChanged += (s, e) => UpdateCommandPreview();
+            inputFilesList.SelectedIndexChanged += (s, e) => UpdateCommandPreview();
+
             tab.Controls.Add(inputGroup);
-            tab.Controls.Add(outputGroup);
-            tab.Controls.Add(optionsGroup);
+            tab.Controls.Add(outputTypeGroup);
+            tab.Controls.Add(commandGroup);
             tab.Controls.Add(convertBtn);
             tab.Controls.Add(logGroup);
         }
@@ -176,41 +185,63 @@ namespace GT2ModelToolGUI
         {
             // Input Directory for batch processing
             GroupBox batchInputGroup = new GroupBox();
-            batchInputGroup.Text = "Input Directory (Search for .cdp, .cnp, .cdo, .cno files)";
+            batchInputGroup.Text = "Input Directory (Search for .cdo, .cno, .json files)";
             batchInputGroup.Location = new System.Drawing.Point(10, 10);
-            batchInputGroup.Size = new System.Drawing.Size(750, 80);
+            batchInputGroup.Size = new System.Drawing.Size(800, 80);
 
             TextBox batchInputText = new TextBox();
             batchInputText.Name = "batchInputText";
             batchInputText.Location = new System.Drawing.Point(10, 25);
-            batchInputText.Size = new System.Drawing.Size(600, 23);
+            batchInputText.Size = new System.Drawing.Size(650, 23);
             batchInputText.ReadOnly = true;
 
             Button browseBatchBtn = new Button();
             browseBatchBtn.Text = "Browse...";
-            browseBatchBtn.Location = new System.Drawing.Point(620, 24);
+            browseBatchBtn.Location = new System.Drawing.Point(670, 24);
             browseBatchBtn.Size = new System.Drawing.Size(80, 25);
             browseBatchBtn.Click += BrowseBatchInput_Click;
 
             batchInputGroup.Controls.Add(batchInputText);
             batchInputGroup.Controls.Add(browseBatchBtn);
 
+            // Batch Output Type
+            GroupBox batchOutputGroup = new GroupBox();
+            batchOutputGroup.Text = "Batch Output Format";
+            batchOutputGroup.Location = new System.Drawing.Point(10, 100);
+            batchOutputGroup.Size = new System.Drawing.Size(800, 100);
+
+            RadioButton batchRadioOE = new RadioButton();
+            batchRadioOE.Name = "batchRadioOE";
+            batchRadioOE.Text = "Convert all to Editable Files (.json, .obj, .mtl)";
+            batchRadioOE.Location = new System.Drawing.Point(15, 25);
+            batchRadioOE.Size = new System.Drawing.Size(770, 20);
+            batchRadioOE.Checked = true;
+
+            RadioButton batchRadioOES = new RadioButton();
+            batchRadioOES.Name = "batchRadioOES";
+            batchRadioOES.Text = "Convert all to Editable Files with Split Overlapping Faces";
+            batchRadioOES.Location = new System.Drawing.Point(15, 50);
+            batchRadioOES.Size = new System.Drawing.Size(770, 20);
+
+            batchOutputGroup.Controls.Add(batchRadioOE);
+            batchOutputGroup.Controls.Add(batchRadioOES);
+
             // Progress Bar
             GroupBox progressGroup = new GroupBox();
             progressGroup.Text = "Progress";
-            progressGroup.Location = new System.Drawing.Point(10, 100);
-            progressGroup.Size = new System.Drawing.Size(750, 80);
+            progressGroup.Location = new System.Drawing.Point(10, 210);
+            progressGroup.Size = new System.Drawing.Size(800, 80);
 
             ProgressBar progressBar = new ProgressBar();
             progressBar.Name = "batchProgressBar";
             progressBar.Location = new System.Drawing.Point(10, 25);
-            progressBar.Size = new System.Drawing.Size(730, 25);
+            progressBar.Size = new System.Drawing.Size(780, 25);
 
             Label progressLabel = new Label();
             progressLabel.Name = "progressLabel";
             progressLabel.Text = "Ready";
             progressLabel.Location = new System.Drawing.Point(10, 55);
-            progressLabel.Size = new System.Drawing.Size(730, 20);
+            progressLabel.Size = new System.Drawing.Size(780, 20);
 
             progressGroup.Controls.Add(progressBar);
             progressGroup.Controls.Add(progressLabel);
@@ -218,12 +249,13 @@ namespace GT2ModelToolGUI
             // Batch Process Button
             Button batchProcessBtn = new Button();
             batchProcessBtn.Text = "Start Batch Process";
-            batchProcessBtn.Location = new System.Drawing.Point(300, 190);
+            batchProcessBtn.Location = new System.Drawing.Point(325, 300);
             batchProcessBtn.Size = new System.Drawing.Size(150, 35);
             batchProcessBtn.BackColor = System.Drawing.Color.LightBlue;
             batchProcessBtn.Click += BatchProcessButton_Click;
 
             tab.Controls.Add(batchInputGroup);
+            tab.Controls.Add(batchOutputGroup);
             tab.Controls.Add(progressGroup);
             tab.Controls.Add(batchProcessBtn);
         }
@@ -231,47 +263,124 @@ namespace GT2ModelToolGUI
         private void SetupSettingsTab(TabPage tab)
         {
             GroupBox toolPathGroup = new GroupBox();
-            toolPathGroup.Text = "GT2ModelTool Executable Path";
+            toolPathGroup.Text = "GT2ModelTool.exe Path";
             toolPathGroup.Location = new System.Drawing.Point(10, 10);
-            toolPathGroup.Size = new System.Drawing.Size(750, 80);
+            toolPathGroup.Size = new System.Drawing.Size(800, 80);
 
             TextBox toolPathText = new TextBox();
             toolPathText.Name = "toolPathText";
             toolPathText.Text = gt2ModelToolPath;
             toolPathText.Location = new System.Drawing.Point(10, 25);
-            toolPathText.Size = new System.Drawing.Size(600, 23);
+            toolPathText.Size = new System.Drawing.Size(650, 23);
 
             Button browseToolBtn = new Button();
             browseToolBtn.Text = "Browse...";
-            browseToolBtn.Location = new System.Drawing.Point(620, 24);
+            browseToolBtn.Location = new System.Drawing.Point(670, 24);
             browseToolBtn.Size = new System.Drawing.Size(80, 25);
             browseToolBtn.Click += BrowseToolPath_Click;
-
-            Button saveSettingsBtn = new Button();
-            saveSettingsBtn.Text = "Save Settings";
-            saveSettingsBtn.Location = new System.Drawing.Point(350, 100);
-            saveSettingsBtn.Size = new System.Drawing.Size(100, 30);
-            saveSettingsBtn.Click += SaveSettings_Click;
 
             toolPathGroup.Controls.Add(toolPathText);
             toolPathGroup.Controls.Add(browseToolBtn);
 
+            // Info section
+            GroupBox infoGroup = new GroupBox();
+            infoGroup.Text = "Information";
+            infoGroup.Location = new System.Drawing.Point(20, 100);
+            infoGroup.Size = new System.Drawing.Size(800, 250);
+
+            LinkLabel infoLabel = new LinkLabel(); // Change from Label to LinkLabel
+            infoLabel.Text = "GT2 Model Tool Usage:\n\n" +
+                           "• This tool does not use any code from Pez2k's GT2 Model Tool.\n" +
+                           " It must be downloaded seperately and placed into the 'Tool' folder.\n" +
+                           "• .cdo/.cno → Editable: Converts game models to .json/.obj/.mtl for editing\n" +
+                           "• .json → .cdo/.cno: Converts edited models back to game format\n" +
+                           "• Split Overlapping Faces: Use when editing in Blender to prevent face deletion\n\n" +
+                           "Requirements:\n" +
+                           "• .NET 8.0 Desktop Runtime x64\n" +
+                           "• GT2ModelTool.exe in the specified path\n\n" +
+                           "Note: Always backup your original files before conversion!\n" +
+                           "Credit goes to Pez2k for the original tool which can be downloaded from the link below.\n" +
+                           "https://github.com/pez2k/gt2tools/releases/tag/GT2ModelTool210";
+            infoLabel.Location = new System.Drawing.Point(35, 1);
+            infoLabel.Size = new System.Drawing.Size(870, 560);
+
+            // Set up the clickable link
+            string linkUrl = "https://github.com/pez2k/gt2tools/releases/tag/GT2ModelTool210";
+            int linkStart = infoLabel.Text.IndexOf(linkUrl);
+            infoLabel.Links.Add(linkStart, linkUrl.Length, linkUrl);
+
+            // Handle the link click event
+            infoLabel.LinkClicked += (sender, e) => {
+                try
+                {
+                    System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                    {
+                        FileName = e.Link.LinkData.ToString(),
+                        UseShellExecute = true
+                    });
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Unable to open link: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
+            };
+
+            infoGroup.Controls.Add(infoLabel);
+
+            Button saveSettingsBtn = new Button();
+            saveSettingsBtn.Text = "Save Settings";
+            saveSettingsBtn.Location = new System.Drawing.Point(350, 410);
+            saveSettingsBtn.Size = new System.Drawing.Size(100, 30);
+            saveSettingsBtn.Click += SaveSettings_Click;
+
+            Button testToolBtn = new Button();
+            testToolBtn.Text = "Test Tool";
+            testToolBtn.Location = new System.Drawing.Point(460, 410);
+            testToolBtn.Size = new System.Drawing.Size(100, 30);
+            testToolBtn.Click += TestTool_Click;
+
             tab.Controls.Add(toolPathGroup);
+            tab.Controls.Add(infoGroup);
             tab.Controls.Add(saveSettingsBtn);
+            tab.Controls.Add(testToolBtn);
         }
 
-        // Event Handlers
+
+        private void InputFilesList_DragEnter(object sender, DragEventArgs e)
+        {
+            if (e.Data.GetDataPresent(DataFormats.FileDrop))
+                e.Effect = DragDropEffects.Copy;
+        }
+
+        private void InputFilesList_DragDrop(object sender, DragEventArgs e)
+        {
+            string[] files = (string[])e.Data.GetData(DataFormats.FileDrop);
+            var filesList = FindControl<ListBox>(this, "inputFilesList");
+
+            foreach (string file in files)
+            {
+                string ext = Path.GetExtension(file).ToLower();
+                if (ext == ".cdo" || ext == ".cno" || ext == ".json")
+                {
+                    if (!filesList.Items.Contains(file))
+                    {
+                        filesList.Items.Add(file);
+                    }
+                }
+            }
+            UpdateCommandPreview();
+        }
+
         private void BrowseInputFile_Click(object sender, EventArgs e)
         {
             using (OpenFileDialog dialog = new OpenFileDialog())
             {
-                dialog.Filter = "GT2 Model Files (*.cdp;*.cnp;*.cdo;*.cno)|*.cdp;*.cnp;*.cdo;*.cno|" +
-                               "CDP Files (*.cdp)|*.cdp|" +
-                               "CNP Files (*.cnp)|*.cnp|" +
+                dialog.Filter = "GT2 Model Files (*.cdo;*.cno;*.json)|*.cdo;*.cno;*.json|" +
                                "CDO Files (*.cdo)|*.cdo|" +
                                "CNO Files (*.cno)|*.cno|" +
+                               "JSON Files (*.json)|*.json|" +
                                "All Files (*.*)|*.*";
-                dialog.Title = "Select GT2 Car Model Files";
+                dialog.Title = "Select GT2 Model Files";
                 dialog.Multiselect = true;
 
                 if (dialog.ShowDialog() == DialogResult.OK)
@@ -279,12 +388,12 @@ namespace GT2ModelToolGUI
                     var filesList = FindControl<ListBox>(this, "inputFilesList");
                     foreach (string fileName in dialog.FileNames)
                     {
-                        // Avoid duplicates
                         if (!filesList.Items.Contains(fileName))
                         {
                             filesList.Items.Add(fileName);
                         }
                     }
+                    UpdateCommandPreview();
                 }
             }
         }
@@ -293,6 +402,7 @@ namespace GT2ModelToolGUI
         {
             var filesList = FindControl<ListBox>(this, "inputFilesList");
             filesList.Items.Clear();
+            UpdateCommandPreview();
         }
 
         private void RemoveSelected_Click(object sender, EventArgs e)
@@ -300,22 +410,11 @@ namespace GT2ModelToolGUI
             var filesList = FindControl<ListBox>(this, "inputFilesList");
             if (filesList.SelectedItems.Count > 0)
             {
-                // Remove selected items (go backwards to avoid index issues)
                 for (int i = filesList.SelectedIndices.Count - 1; i >= 0; i--)
                 {
                     filesList.Items.RemoveAt(filesList.SelectedIndices[i]);
                 }
-            }
-        }
-
-        private void BrowseOutputDir_Click(object sender, EventArgs e)
-        {
-            using (FolderBrowserDialog dialog = new FolderBrowserDialog())
-            {
-                if (dialog.ShowDialog() == DialogResult.OK)
-                {
-                    FindControl<TextBox>(this, "outputDirText").Text = dialog.SelectedPath;
-                }
+                UpdateCommandPreview();
             }
         }
 
@@ -323,6 +422,7 @@ namespace GT2ModelToolGUI
         {
             using (FolderBrowserDialog dialog = new FolderBrowserDialog())
             {
+                dialog.Description = "Select folder containing GT2 model files";
                 if (dialog.ShowDialog() == DialogResult.OK)
                 {
                     FindControl<TextBox>(this, "batchInputText").Text = dialog.SelectedPath;
@@ -334,7 +434,8 @@ namespace GT2ModelToolGUI
         {
             using (OpenFileDialog dialog = new OpenFileDialog())
             {
-                dialog.Filter = "Executable Files (*.exe)|*.exe|All Files (*.*)|*.*";
+                dialog.Filter = "GT2ModelTool (GT2ModelTool.exe)|GT2ModelTool.exe|Executable Files (*.exe)|*.exe|All Files (*.*)|*.*";
+                dialog.Title = "Select GT2ModelTool.exe";
                 if (dialog.ShowDialog() == DialogResult.OK)
                 {
                     FindControl<TextBox>(this, "toolPathText").Text = dialog.FileName;
@@ -342,63 +443,99 @@ namespace GT2ModelToolGUI
             }
         }
 
+        private void UpdateCommandPreview()
+        {
+            var filesList = FindControl<ListBox>(this, "inputFilesList");
+            var commandPreview = FindControl<TextBox>(this, "commandPreview");
+
+            if (filesList.SelectedItem != null)
+            {
+                string selectedFile = filesList.SelectedItem.ToString();
+                string outputType = GetSelectedOutputType();
+                string command = $"GT2ModelTool -{outputType} \"{Path.GetFileName(selectedFile)}\"";
+                commandPreview.Text = command;
+            }
+            else if (filesList.Items.Count > 0)
+            {
+                string outputType = GetSelectedOutputType();
+                commandPreview.Text = $"GT2ModelTool -{outputType} [selected_file]";
+            }
+            else
+            {
+                commandPreview.Text = "Select files to see command preview";
+            }
+        }
+
+        private string GetSelectedOutputType()
+        {
+            if (FindControl<RadioButton>(this, "radioO2")?.Checked == true) return "o2";
+            if (FindControl<RadioButton>(this, "radioOES")?.Checked == true) return "oes";
+            return "oe";
+        }
+
         private async void ConvertButton_Click(object sender, EventArgs e)
         {
             var filesList = FindControl<ListBox>(this, "inputFilesList");
-            var outputDir = FindControl<TextBox>(this, "outputDirText").Text;
             var outputLog = FindControl<TextBox>(this, "outputLog");
+            var convertBtn = FindControl<Button>(this, "convertBtn");
 
             if (filesList.Items.Count == 0)
             {
-                MessageBox.Show("Please select at least one GT2 model file to convert.", "No Files Selected",
+                MessageBox.Show("Please select at least one file to convert.", "No Files Selected",
                     MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
 
-            if (string.IsNullOrEmpty(outputDir))
+            if (!File.Exists(gt2ModelToolPath))
             {
-                MessageBox.Show("Please select an output directory.", "Missing Output Directory",
-                    MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MessageBox.Show($"GT2ModelTool.exe not found at: {gt2ModelToolPath}\n\nPlease check the Settings tab.",
+                    "Tool Not Found", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return;
+            }
+            string outputFolder = string.Empty;
+            using (var folderDialog = new FolderBrowserDialog())
+            {
+                folderDialog.Description = "Select the folder to save converted files:";
+                if (folderDialog.ShowDialog() != DialogResult.OK)
+                {
+                    // User cancelled folder selection
+                    return;
+                }
+                outputFolder = folderDialog.SelectedPath;
             }
 
             outputLog.Clear();
             outputLog.AppendText($"Starting conversion of {filesList.Items.Count} files...\r\n");
+            outputLog.AppendText($"Using tool: {gt2ModelToolPath}\r\n\r\n");
 
-            // Disable the convert button during processing
-            var convertBtn = sender as Button;
             convertBtn.Enabled = false;
             convertBtn.Text = "Converting...";
 
             try
             {
+                string outputType = GetSelectedOutputType();
+
                 for (int i = 0; i < filesList.Items.Count; i++)
                 {
                     string inputFile = filesList.Items[i].ToString();
-                    outputLog.AppendText($"\r\n--- Processing file {i + 1}/{filesList.Items.Count}: {Path.GetFileName(inputFile)} ---\r\n");
+                    outputLog.AppendText($"--- File {i + 1}/{filesList.Items.Count}: {Path.GetFileName(inputFile)} ---\r\n");
 
-                    string arguments = BuildArguments(inputFile, outputDir);
-                    await RunToolAsync(arguments, outputLog);
-
-                    // Update UI to show progress
+                    await RunToolAsync(outputType, inputFile, outputLog);
                     Application.DoEvents();
                 }
 
                 outputLog.AppendText($"\r\n=== CONVERSION COMPLETE ===\r\n");
-                outputLog.AppendText($"Successfully processed {filesList.Items.Count} files!\r\n");
-
-                MessageBox.Show($"Conversion complete!\r\nProcessed {filesList.Items.Count} files.",
-                    "Conversion Complete", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                MessageBox.Show($"Conversion complete!\nProcessed {filesList.Items.Count} files.",
+                    "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
             catch (Exception ex)
             {
                 outputLog.AppendText($"\r\nFATAL ERROR: {ex.Message}\r\n");
-                MessageBox.Show($"An error occurred during conversion: {ex.Message}", "Conversion Error",
+                MessageBox.Show($"Error during conversion: {ex.Message}", "Error",
                     MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
             finally
             {
-                // Re-enable the convert button
                 convertBtn.Enabled = true;
                 convertBtn.Text = "Convert Selected Files";
             }
@@ -407,62 +544,62 @@ namespace GT2ModelToolGUI
         private async void BatchProcessButton_Click(object sender, EventArgs e)
         {
             var batchInput = FindControl<TextBox>(this, "batchInputText").Text;
+            var progressBar = FindControl<ProgressBar>(this, "batchProgressBar");
+            var progressLabel = FindControl<Label>(this, "progressLabel");
 
-            if (string.IsNullOrEmpty(batchInput))
+            if (string.IsNullOrEmpty(batchInput) || !Directory.Exists(batchInput))
             {
-                MessageBox.Show("Please select input directory for batch processing.", "Missing Information",
+                MessageBox.Show("Please select a valid input directory.", "Invalid Directory",
                     MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
 
-            var progressBar = FindControl<ProgressBar>(this, "batchProgressBar");
-            var progressLabel = FindControl<Label>(this, "progressLabel");
+            if (!File.Exists(gt2ModelToolPath))
+            {
+                MessageBox.Show($"GT2ModelTool.exe not found at: {gt2ModelToolPath}", "Tool Not Found",
+                    MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return;
+            }
 
             try
             {
-                // Find all GT2 model files in the directory
-                string[] gt2Files = Directory.GetFiles(batchInput, "*.*", SearchOption.AllDirectories)
-                    .Where(file => file.ToLower().EndsWith(".cdp") ||
-                                   file.ToLower().EndsWith(".cnp") ||
-                                   file.ToLower().EndsWith(".cdo") ||
-                                   file.ToLower().EndsWith(".cno"))
-                    .ToArray();
+                string[] files = Directory.GetFiles(batchInput, "*.*", SearchOption.AllDirectories)
+                    .Where(file => {
+                        string ext = Path.GetExtension(file).ToLower();
+                        return ext == ".cdo" || ext == ".cno" || ext == ".json";
+                    }).ToArray();
 
-                if (gt2Files.Length == 0)
+                if (files.Length == 0)
                 {
-                    MessageBox.Show("No GT2 model files (.cdp, .cnp, .cdo, .cno) found in the selected directory.",
-                        "No Files Found", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    MessageBox.Show("No GT2 model files found in the selected directory.", "No Files Found",
+                        MessageBoxButtons.OK, MessageBoxIcon.Information);
                     return;
                 }
 
-                progressBar.Maximum = gt2Files.Length;
+                progressBar.Maximum = files.Length;
                 progressBar.Value = 0;
 
-                for (int i = 0; i < gt2Files.Length; i++)
+                string outputType = FindControl<RadioButton>(this, "batchRadioOES")?.Checked == true ? "oes" : "oe";
+
+                for (int i = 0; i < files.Length; i++)
                 {
-                    string file = gt2Files[i];
-                    progressLabel.Text = $"Processing {Path.GetFileName(file)} ({i + 1}/{gt2Files.Length})";
+                    string file = files[i];
+                    progressLabel.Text = $"Processing {Path.GetFileName(file)} ({i + 1}/{files.Length})";
 
-                    // Create output directory next to input file
-                    string outputDir = Path.Combine(Path.GetDirectoryName(file), Path.GetFileNameWithoutExtension(file) + "_converted");
-                    Directory.CreateDirectory(outputDir);
-
-                    // Process the file
-                    string arguments = BuildArguments(file, outputDir);
-                    await RunToolAsync(arguments, null); // null means don't update log for batch
+                    await RunToolAsync(outputType, file, null);
 
                     progressBar.Value = i + 1;
-                    Application.DoEvents(); // Update UI
+                    Application.DoEvents();
                 }
 
-                progressLabel.Text = $"Batch processing complete! Processed {gt2Files.Length} files.";
-                MessageBox.Show($"Successfully processed {gt2Files.Length} GT2 model files!", "Batch Complete",
+                progressLabel.Text = $"Batch complete! Processed {files.Length} files.";
+                MessageBox.Show($"Successfully processed {files.Length} files!", "Batch Complete",
                     MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
             catch (Exception ex)
             {
                 progressLabel.Text = "Batch processing failed.";
-                MessageBox.Show($"Error during batch processing: {ex.Message}", "Batch Error",
+                MessageBox.Show($"Error during batch processing: {ex.Message}", "Error",
                     MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
@@ -470,34 +607,27 @@ namespace GT2ModelToolGUI
         private void SaveSettings_Click(object sender, EventArgs e)
         {
             gt2ModelToolPath = FindControl<TextBox>(this, "toolPathText").Text;
+            SaveSettings();
             MessageBox.Show("Settings saved!", "Settings", MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
 
-        private string BuildArguments(string inputFile, string outputDir)
+        private async void TestTool_Click(object sender, EventArgs e)
         {
-            var extractTextures = FindControl<CheckBox>(this, "extractTexturesChk").Checked;
-            var preserveStructure = FindControl<CheckBox>(this, "preserveStructureChk").Checked;
-            var verbose = FindControl<CheckBox>(this, "verboseOutputChk").Checked;
+            string toolPath = FindControl<TextBox>(this, "toolPathText").Text;
 
-            // Build command line arguments based on tool's actual parameters
-            // This is a placeholder - adjust based on GT2ModelTool's actual command line syntax
-            string args = $"\"{inputFile}\" \"{outputDir}\"";
+            if (!File.Exists(toolPath))
+            {
+                MessageBox.Show("GT2ModelTool.exe not found at the specified path.", "Tool Not Found",
+                    MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return;
+            }
 
-            if (extractTextures) args += " -t";
-            if (preserveStructure) args += " -p";
-            if (verbose) args += " -v";
-
-            return args;
-        }
-
-        private async Task RunToolAsync(string arguments, TextBox outputLog)
-        {
             try
             {
                 ProcessStartInfo startInfo = new ProcessStartInfo
                 {
-                    FileName = gt2ModelToolPath,
-                    Arguments = arguments,
+                    FileName = toolPath,
+                    Arguments = "", 
                     UseShellExecute = false,
                     RedirectStandardOutput = true,
                     RedirectStandardError = true,
@@ -506,7 +636,45 @@ namespace GT2ModelToolGUI
 
                 using (Process process = Process.Start(startInfo))
                 {
-                    // Read output asynchronously
+                    await process.WaitForExitAsync();
+                    string output = await process.StandardOutput.ReadToEndAsync();
+                    string error = await process.StandardError.ReadToEndAsync();
+
+                    MessageBox.Show($"Tool test successful!\nExit code: {process.ExitCode}\n\nOutput:\n{output}\n\nError:\n{error}",
+                        "Tool Test", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Failed to run tool: {ex.Message}", "Tool Test Failed",
+                    MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        private async Task RunToolAsync(string outputType, string inputFile, TextBox outputLog)
+        {
+            try
+            {
+                string arguments = $"-{outputType} \"{inputFile}\"";
+
+                ProcessStartInfo startInfo = new ProcessStartInfo
+                {
+                    FileName = gt2ModelToolPath,
+                    Arguments = arguments,
+                    UseShellExecute = false,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    CreateNoWindow = true,
+                    WorkingDirectory = Path.GetDirectoryName(inputFile)
+                };
+
+                if (outputLog != null)
+                {
+                    outputLog.AppendText($"Running: GT2ModelTool {arguments}\r\n");
+                }
+
+                using (Process process = Process.Start(startInfo))
+                {
                     Task<string> outputTask = process.StandardOutput.ReadToEndAsync();
                     Task<string> errorTask = process.StandardError.ReadToEndAsync();
 
@@ -515,20 +683,20 @@ namespace GT2ModelToolGUI
                     string output = await outputTask;
                     string error = await errorTask;
 
-                    // Only update log if outputLog is provided (not null)
                     if (outputLog != null)
                     {
                         if (!string.IsNullOrEmpty(output))
-                        {
-                            outputLog.AppendText(output + "\r\n");
-                        }
+                            outputLog.AppendText($"Output: {output}\r\n");
 
                         if (!string.IsNullOrEmpty(error))
-                        {
-                            outputLog.AppendText("ERROR: " + error + "\r\n");
-                        }
+                            outputLog.AppendText($"Error: {error}\r\n");
 
-                        outputLog.AppendText($"Process completed with exit code: {process.ExitCode}\r\n");
+                        outputLog.AppendText($"Exit code: {process.ExitCode}\r\n\r\n");
+                    }
+
+                    if (process.ExitCode != 0 && !string.IsNullOrEmpty(error))
+                    {
+                        throw new Exception($"Tool failed with exit code {process.ExitCode}: {error}");
                     }
                 }
             }
@@ -536,16 +704,35 @@ namespace GT2ModelToolGUI
             {
                 if (outputLog != null)
                 {
-                    outputLog.AppendText($"Error running tool: {ex.Message}\r\n");
+                    outputLog.AppendText($"Error: {ex.Message}\r\n\r\n");
                 }
-
-                // Always show message box for errors, even in batch mode
-                MessageBox.Show($"Error running GT2ModelTool: {ex.Message}", "Error",
-                    MessageBoxButtons.OK, MessageBoxIcon.Error);
+                throw;
             }
         }
 
-        // Helper method to find controls by name
+        private void LoadSettings()
+        {
+            string[] possiblePaths = {
+                "GT2ModelTool.exe",
+                Path.Combine(Application.StartupPath, "GT2ModelTool.exe"),
+                Path.Combine(Environment.CurrentDirectory, "GT2ModelTool.exe")
+            };
+
+            foreach (string path in possiblePaths)
+            {
+                if (File.Exists(path))
+                {
+                    gt2ModelToolPath = path;
+                    break;
+                }
+            }
+        }
+
+        private void SaveSettings()
+        {
+
+        }
+
         private T FindControl<T>(Control parent, string name) where T : Control
         {
             foreach (Control control in parent.Controls)
@@ -558,6 +745,18 @@ namespace GT2ModelToolGUI
                     return found;
             }
             return null;
+        }
+    }
+
+
+    public static class ProcessExtensions
+    {
+        public static Task WaitForExitAsync(this Process process)
+        {
+            var tcs = new TaskCompletionSource<bool>();
+            process.EnableRaisingEvents = true;
+            process.Exited += (sender, args) => tcs.TrySetResult(true);
+            return process.HasExited ? Task.CompletedTask : tcs.Task;
         }
     }
 }
