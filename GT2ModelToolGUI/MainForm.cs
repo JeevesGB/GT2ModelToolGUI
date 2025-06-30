@@ -9,7 +9,7 @@ namespace GT2ModelToolGUI
 {
     public partial class MainForm : Form
     {
-        private string gt2ModelToolPath = "GT2ModelTool.exe"; // Path to the executable
+        private string gt2ModelToolPath = ""; // Path to the executable
 
         public MainForm()
         {
